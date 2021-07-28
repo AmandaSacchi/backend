@@ -16,10 +16,11 @@ db = SQLAlchemy(app)
 class Filme(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     nome = db.Column(db.String(50))
+    genero = db.Column(db.String(50))
 
 #tranforma em json
 def to_json(self):
-    return{"id": self.id, "nome": self.nome}
+    return{"id": self.id, "nome": self.nome, "genero":self.genero}
 
 #cadastrar um novo filme
 @app.route("/filmes", methods=["POST"])
@@ -28,7 +29,7 @@ def cadastrar():
 
 
     try:
-        filme = Filme(nome=body["nome"],id = body["id"])
+        filme = Filme(nome = body["nome"],id = body["id"],genero = body["genero"])
         db.session.add(filme)
         db.session.commit()
         return gera_response(201, "filme", filme.to_json(), "Cadastrado com sucesso")
