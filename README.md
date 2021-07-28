@@ -1,36 +1,66 @@
-![WATTIO](http://wattio.com.br/web/image/1204-212f47c3/Logo%20Wattio.png)
+from _typeshed import Self
+from flask import Flask, Response, Request
+from flask_sqlalchemy import SQLAlchemy
+import _mysql_connector
+import json
 
-#### Descrição
+from werkzeug.wrappers import request
 
-O desafio consiste em implementar um CRUD de filmes, utilizando [python](https://www.python.org/ "python") integrando com uma API REST e uma possível persistência de dados.
+app = Flask(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/base'
 
-Rotas da API:
+db = SQLAlchemy(app)
 
- - `/filmes` - [GET] deve retornar todos os filmes cadastrados.
- - `/filmes` - [POST] deve cadastrar um novo filme.
- - `/filmes/{id}` -  [GET] deve retornar o filme com ID especificado.
+#define um modelo 
+class Filme(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    nome = db.Column(db.String(50))
 
-O Objetivo é te desafiar e reconhecer seu esforço para aprender e se adaptar. Qualquer código enviado, ficaremos muito felizes e avaliaremos com toda atenção!
+#tranforma em json
+def to_json(self):
+    return{"id": self.id, "nome": self.nome}
 
-#### Sugestão de Ferramentas 
-Não é obrigatório utilizar todas as as tecnologias sugeridas, mas será um diferencial =]
-
-- Orientação a objetos (utilizar objetos, classes para manipular os filmes)
-- [FastAPI](https://fastapi.tiangolo.com/) (API com documentação auto gerada)
-- [Docker](https://www.docker.com/) / [Docker-compose](https://docs.docker.com/compose/install/) (Aplicação deverá ficar em um container docker, e o start deverá seer com o comando ``` docker-compose up ```
-- Integração com banco de dados (persistir as informações em json (iniciante) /[SqLite](https://www.sqlite.org/index.html) / [SQLAlchemy](https://fastapi.tiangolo.com/tutorial/sql-databases/#sql-relational-databases) / outros DB)
+#cadastrar um novo filme
+@app.route("/filmes", methods=["POST"])
+def cadastrar():
+    body = request.get_json()
 
 
-#### Como começar?
+    try:
+        filme = Filme(nome=body["nome"],id = body["id"])
+        db.session.add(filme)
+        db.session.commit()
+        return gera_response(201, "filme", filme.to_json(), "Cadastrado com sucesso")
 
-- Fork do repositório
-- Criar branch com seu nome ``` git checkout -b feature/ana ```
-- Faça os commits de suas alterações ``` git commit -m "[ADD] Funcionalidade" ```
-- Envie a branch para seu repositório ``` git push origin feature/ana ```
-- Navegue até o [Github](https://github.com/), crie seu Pull Request apontando para a branch **```main```**
+    except Exception as e:
+        print(e)
+        return gera_response(400,"usuario",{}, "Erro ao cadastrar")
 
-#### Dúvidas?
+#retornar todos os filmes
+@app.route("/filmes", methods=["GET"])
+def retorna_filmes():
+    filmes_objetos = Filme.query.all()
+    filmes_json = [filme.to_json()for filme in filmes_objetos]
 
-Qualquer dúvida / sugestão / melhoria / orientação adicional só enviar email para hendrix@wattio.com.br
+    return gera_response(200,"filmes", filmes_json)
 
-Salve!
+#retornar pelo id
+@app.route("/filmes/<id>")
+def retorna_filmes(id):
+    filme_objeto = Filme.query.filter_by(id=Self.id).first()
+    filme_json = filme_objeto.to_json()
+
+    return gera_response(200, "filme", filme_json)
+
+def gera_response(status, nome_do_conteudo, conteudo, mensagem=False):
+    body = {}
+    body[nome_do_conteudo] = conteudo
+
+    if(mensagem):
+        body["mensagem"] = mensagem
+
+    return Response(json.dumps(body), status=status, mimetype="application/json")
+
+
+    app.run()
